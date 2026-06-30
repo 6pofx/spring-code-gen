@@ -1,0 +1,10 @@
+# 测试文件
+test/
+text/
+spring-code-gen.exe
+spring-code-gen.exe~
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring 代码生成器</title>
+<style>
+:root {
+  --primary: #1a73e8;
+  --primary-hover: #1557b0;
+  --bg: #f5f7fa;
+  --card-bg: #fff;
+  --border: #dce0e6;
+  --text: #1f2937;
+  --text-secondary: #6b7280;
+  --success: #10b981;
+  --error: #ef4444;
+  --radius: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.6; }
+.container { max-width: 960px; margin: 0 auto; padding: 20px; }
+.header { text-align: center; padding: 32px 0 24px; }
+.header h1 { font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+.header p { color: var(--text-secondary); font-size: 14px; }
+.card { background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 20px; margin-bottom: 16px; }
+.card h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--primary);
+  display: flex; align-items: center; gap: 8px; }
+.card h2::before { content: ''; display: inline-block; width: 4px; height: 16px;
+  background: var(--primary); border-radius: 2px; }
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.form-group { flex: 1; min-width: 140px; }
+.form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: var(--text-secondary); }
+.form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: 14px; outline: none; transition: border .2s; }
+.form-group input:focus, .form-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,115,232,.15); }
+.checkbox-group { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0; }
+.checkbox-group label { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
+.btn { padding: 8px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-secondary { background: #e5e7eb; color: var(--text); }
+.btn-secondary:hover { background: #d1d5db; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #059669; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.table-list { max-height: 240px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 4px; }
+.table-list label { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px;
+  cursor: pointer; font-size: 14px; transition: background .15s; }
+.table-list label:hover { background: #f0f4ff; }
+.table-list input[type="checkbox"] { margin: 0; }
+.config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 600px) { .config-grid { grid-template-columns: 1fr; } }
+.log-area { background: #1e293b; color: #e2e8f0; border-radius: 6px; padding: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; max-height: 300px;
+  overflow-y: auto; line-height: 1.7; margin-top: 12px; white-space: pre-wrap; word-break: break-all; }
+.log-area .success { color: #34d399; }
+.log-area .error { color: #f87171; }
+.log-area .info { color: #60a5fa; }
+.toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.gen-switches { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
+.gen-switches label { font-size: 14px; display: flex; align-items: center; gap: 4px; }
+.full-width { width: 100%; }
+.hidden { display: none; }
+.connection-status { font-size: 13px; padding: 4px 0; }
+.connection-status.success { color: var(--success); }
+.connection-status.error { color: var(--error); }
+.filter-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.filter-row .form-group { min-width: 200px; flex: 1; }
+.progress-bar { height: 4px; background: #e5e7eb; border-radius: 2px; margin: 8px 0; overflow: hidden; }
+.progress-bar .bar { height: 100%; background: var(--primary); border-radius: 2px; transition: width .3s; }
+.table-select-all { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⚡ Spring 代码生成器</h1>
+    <p>读取数据库表结构，一键生成 Entity / Mapper / Service / Controller</p>
+  </div>
+
+  <!-- 数据库连接 -->
+  <div class="card">
+    <h2>数据库连接</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>数据库类型</label>
+        <select id="dbType"><option value="mysql">MySQL</option><option value="postgresql">PostgreSQL</option></select>
+      </div>
+      <div class="form-group">
+        <label>主机</label>
+        <input id="dbHost" value="127.0.0.1">
+      </div>
+      <div class="form-group" style="max-width:100px">
+        <label>端口</label>
+        <input id="dbPort" value="3306">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>数据库名</label>
+        <input id="dbName" placeholder="请输入数据库名">
+      </div>
+      <div class="form-group">
+        <label>用户名</label>
+        <input id="dbUser" placeholder="例如 root">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input id="dbPassword" type="password" placeholder="数据库密码">
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="testConnection()">🔌 测试连接</button>
+      <span id="connStatus" class="connection-status"></span>
+    </div>
+  </div>
+
+  <!-- 表选择 -->
+  <div class="card">
+    <h2>表选择</h2>
+    <div class="filter-row">
+      <div class="form-group">
+        <label>表前缀过滤</label>
+        <input id="tablePrefix" placeholder="例如 sys_" oninput="loadTables()">
+      </div>
+      <div class="form-group">
+        <label>排除前缀（逗号分隔）</label>
+        <input id="excludePrefix" placeholder="例如 flyway_,QRTZ_" oninput="loadTables()">
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="loadTables()" style="margin-top:22px">🔄 刷新</button>
+      </div>
+    </div>
+    <div class="table-select-all">
+      <label><input type="checkbox" onchange="toggleAllTables(this.checked)"> 全选</label>
+      <span id="tableCount" style="font-size:13px;color:var(--text-secondary)"></span>
+    </div>
+    <div id="tableList" class="table-list"><p style="color:var(--text-secondary);padding:20px;text-align:center">请先连接数据库</p></div>
+  </div>
+
+  <!-- 配置 -->
+  <div class="card">
+    <h2>代码配置</h2>
+    <div class="config-grid">
+      <div class="form-group">
+        <label>ORM 框架</label>
+        <select id="orm"><option value="mybatis-plus">MyBatis-Plus</option><option value="mybatis">MyBatis</option><option value="jpa">JPA / Hibernate</option></select>
+      </div>
+      <div class="form-group">
+        <label>Spring Boot 版本</label>
+        <select id="springVersion"><option value="3.x">3.x (jakarta)</option><option value="2.x">2.x (javax)</option></select>
+      </div>
+      <div class="form-group">
+        <label>API 文档</label>
+        <select id="swagger"><option value="springdoc">SpringDoc OpenAPI 3</option><option value="swagger2">Swagger 2</option></select>
+      </div>
+      <div class="form-group">
+        <label>注入方式</label>
+        <select id="injectType"><option value="Resource">@Resource</option><option value="Autowired">@Autowired</option></select>
+      </div>
+      <div class="form-group">
+        <label>统一响应类名</label>
+        <input id="responseClass" value="R">
+      </div>
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding-top:8px">
+          <input type="checkbox" id="useLombok" checked> 启用 Lombok
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 包名配置 -->
+  <div class="card">
+    <h2>包名配置</h2>
+    <div class="config-grid">
+      <div class="form-group">
+        <label>父包名</label>
+        <input id="basePackage" value="com.example">
+      </div>
+      <div class="form-group">
+        <label>Entity</label>
+        <input id="entityPackage" value="entity">
+      </div>
+      <div class="form-group">
+        <label>Mapper</label>
+        <input id="mapperPackage" value="mapper">
+      </div>
+      <div class="form-group">
+        <label>Service</label>
+        <input id="servicePackage" value="service">
+      </div>
+      <div class="form-group">
+        <label>ServiceImpl</label>
+        <input id="serviceImplPkg" value="service.impl">
+      </div>
+      <div class="form-group">
+        <label>Controller</label>
+        <input id="controllerPkg" value="controller">
+      </div>
+    </div>
+  </div>
+
+  <!-- 生成选项 -->
+  <div class="card">
+    <h2>生成选项</h2>
+    <div class="gen-switches">
+      <label><input type="checkbox" id="genEntity" checked> Entity</label>
+      <label><input type="checkbox" id="genMapper" checked> Mapper</label>
+      <label><input type="checkbox" id="genService" checked> Service / ServiceImpl</label>
+      <label><input type="checkbox" id="genController" checked> Controller</label>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>输出目录</label>
+        <input id="outputDir" placeholder="例如 ./output 或 D:/project/src/main/java">
+      </div>
+      <div class="form-group" style="max-width:160px">
+        <label>覆盖策略</label>
+        <select id="overwritePolicy">
+          <option value="overwrite">覆盖已有</option>
+          <option value="skip">跳过已有</option>
+          <option value="ask">询问确认</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>也生成统一响应类 (R.java)</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding-top:4px">
+          <input type="checkbox" id="genResponseClass" checked> 生成 {{R}}.java
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- pom.xml 依赖检查 -->
+  <div class="card">
+    <h2>📦 pom.xml 依赖检查</h2>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">检查 Maven 项目的依赖是否已在本地仓库安装</p>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>pom.xml 文件路径</label>
+        <input id="pomPath" placeholder="例如 D:/project/pom.xml 或 ./text/ckgl/pom.xml">
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="checkPomFile()" id="pomBtn">🔍 检查</button>
+      </div>
+    </div>
+    <div style="text-align:center;color:var(--text-secondary);font-size:13px;margin:4px 0">—— 或者 ——</div>
+    <div class="form-group">
+      <label>粘贴 pom.xml 内容</label>
+      <textarea id="pomContent" rows="6" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:monospace;resize:vertical" placeholder="在此粘贴 pom.xml 的内容…"></textarea>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-primary btn-sm" onclick="checkPomContent()" id="pomContentBtn">📋 检查粘贴内容</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearPomResult()">清空</button>
+    </div>
+    <div id="pomResult" class="log-area" style="max-height:400px">等待检查…</div>
+
+    <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
+
+    <h2 style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--primary)">🧩 依赖匹配 — 生成配置 ↔ pom.xml</h2>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">根据左侧的生成配置，检查 pom.xml 是否包含了所需的 Maven 依赖</p>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>pom.xml 文件路径（或直接在上方粘贴内容后点击下方按钮）</label>
+        <input id="pomDepsPath" placeholder="例如 D:/project/pom.xml">
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="checkDepsMatch()" id="pomDepsBtn">🔍 匹配检查</button>
+      </div>
+    </div>
+    <div id="pomDepsResult" class="log-area" style="max-height:400px">点击"匹配检查"按钮，根据上方配置分析 pom.xml…</div>
+  </div>
+
+  <!-- 配置文件检查 -->
+  <div class="card">
+    <h2>⚙️ 配置文件检查</h2>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">检查 application.yml/properties 是否缺少生成代码所需的配置项</p>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>配置文件路径</label>
+        <input id="appConfigPath" placeholder="例如 src/main/resources/application.yml">
+      </div>
+      <div class="form-group" style="max-width:120px">
+        <label>格式</label>
+        <select id="appConfigFormat">
+          <option value="yml">YAML</option>
+          <option value="properties">Properties</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="checkAppConfig()" id="appCfgBtn">🔍 检查</button>
+      </div>
+    </div>
+    <div id="appConfigResult" class="log-area" style="max-height:350px">点击"检查"按钮分析配置文件…</div>
+  </div>
+
+  <!-- 生成 -->
+  <div class="card">
+    <h2>生成代码</h2>
+    <div class="toolbar">
+      <button class="btn btn-success" onclick="generate()" id="genBtn">🚀 生成代码</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearLog()">清空日志</button>
+    </div>
+    <div class="progress-bar" id="progressBar"><div class="bar" id="progressInner" style="width:0%"></div></div>
+    <div id="logArea" class="log-area">等待生成…</div>
+  </div>
+
+</div>
+
+<script>
+// API 基础路径
+const API = '';
+
+// 测试连接
+async function testConnection() {
+  const btn = event.target; btn.disabled = true; btn.textContent = '⏳ 连接中…';
+  const statusEl = document.getElementById('connStatus');
+  statusEl.className = 'connection-status';
+
+  try {
+    const res = await fetch(API + '/api/test-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(getDBConfig())
+    });
+    const data = await res.json();
+    if (data.success) {
+      statusEl.className = 'connection-status success';
+      statusEl.textContent = '✅ 连接成功';
+      loadTables();
+    } else {
+      statusEl.className = 'connection-status error';
+      statusEl.textContent = '❌ ' + (data.message || '连接失败');
+    }
+  } catch (e) {
+    statusEl.className = 'connection-status error';
+    statusEl.textContent = '❌ 请求失败: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '🔌 测试连接';
+}
+
+// 获取 DB 配置
+function getDBConfig() {
+  return {
+    dbType: document.getElementById('dbType').value,
+    dbHost: document.getElementById('dbHost').value,
+    dbPort: parseInt(document.getElementById('dbPort').value) || 3306,
+    dbName: document.getElementById('dbName').value,
+    dbUser: document.getElementById('dbUser').value,
+    dbPassword: document.getElementById('dbPassword').value
+  };
+}
+
+// 获取完整配置
+function getFullConfig() {
+  const db = getDBConfig();
+  const tables = getSelectedTables();
+  return {
+    ...db,
+    tablePrefix: document.getElementById('tablePrefix').value,
+    excludePrefix: document.getElementById('excludePrefix').value,
+    tableNames: tables,
+    orm: document.getElementById('orm').value,
+    springVersion: document.getElementById('springVersion').value,
+    swagger: document.getElementById('swagger').value,
+    injectType: document.getElementById('injectType').value,
+    responseClass: document.getElementById('responseClass').value,
+    useLombok: document.getElementById('useLombok').checked,
+    basePackage: document.getElementById('basePackage').value,
+    entityPackage: document.getElementById('entityPackage').value,
+    mapperPackage: document.getElementById('mapperPackage').value,
+    servicePackage: document.getElementById('servicePackage').value,
+    serviceImplPkg: document.getElementById('serviceImplPkg').value,
+    controllerPkg: document.getElementById('controllerPkg').value,
+    genEntity: document.getElementById('genEntity').checked,
+    genMapper: document.getElementById('genMapper').checked,
+    genService: document.getElementById('genService').checked,
+    genController: document.getElementById('genController').checked,
+    genResponseClass: document.getElementById('genResponseClass').checked,
+    outputDir: document.getElementById('outputDir').value,
+    overwritePolicy: document.getElementById('overwritePolicy').value
+  };
+}
+
+// 加载表列表
+async function loadTables() {
+  const listEl = document.getElementById('tableList');
+  if (!document.getElementById('dbName').value) {
+    listEl.innerHTML = '<p style="color:var(--text-secondary);padding:20px;text-align:center">请先填写数据库信息</p>';
+    return;
+  }
+  listEl.innerHTML = '<p style="color:var(--text-secondary);padding:20px;text-align:center">加载中…</p>';
+  try {
+    const res = await fetch(API + '/api/tables', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...getDBConfig(),
+        tablePrefix: document.getElementById('tablePrefix').value,
+        excludePrefix: document.getElementById('excludePrefix').value
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      renderTables(data.tables);
+    } else {
+      listEl.innerHTML = `<p style="color:var(--error);padding:20px;text-align:center">❌ ${data.message || '加载失败'}</p>`;
+    }
+  } catch (e) {
+    listEl.innerHTML = `<p style="color:var(--error);padding:20px;text-align:center">❌ 请求失败: ${e.message}</p>`;
+  }
+}
+
+// 渲染表列表
+function renderTables(tables) {
+  const listEl = document.getElementById('tableList');
+  if (!tables || tables.length === 0) {
+    listEl.innerHTML = '<p style="color:var(--text-secondary);padding:20px;text-align:center">没有匹配的表</p>';
+    document.getElementById('tableCount').textContent = '';
+    return;
+  }
+  let html = '';
+  tables.forEach(t => {
+    const comment = t.tableComment ? ` (${t.tableComment})` : '';
+    html += `<label><input type="checkbox" value="${t.tableName}" class="table-cb"> ${t.tableName}${comment}</label>`;
+  });
+  listEl.innerHTML = html;
+  document.getElementById('tableCount').textContent = `共 ${tables.length} 个表`;
+}
+
+// 全选/取消全选
+function toggleAllTables(checked) {
+  document.querySelectorAll('.table-cb').forEach(cb => cb.checked = checked);
+}
+
+// 获取选中的表
+function getSelectedTables() {
+  return Array.from(document.querySelectorAll('.table-cb:checked')).map(cb => cb.value);
+}
+
+// 生成代码
+async function generate() {
+  const tables = getSelectedTables();
+  if (tables.length === 0) {
+    log('error', '请先选择要生成的表');
+    return;
+  }
+  const outputDir = document.getElementById('outputDir').value;
+  if (!outputDir) {
+    log('error', '请填写输出目录');
+    return;
+  }
+
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true; btn.textContent = '⏳ 生成中…';
+  document.getElementById('progressInner').style.width = '0%';
+  clearLog();
+
+  const config = getFullConfig();
+  log('info', `🚀 开始生成 ${tables.length} 个表的代码...\n`);
+
+  // 如果勾选了生成响应类，先生成 R.java
+  if (config.genResponseClass) {
+    log('info', `📦 正在生成统一响应类 ${config.responseClass}.java...`);
+    try {
+      const rRes = await fetch(API + '/api/generate-response', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          outputDir: config.outputDir,
+          basePackage: config.basePackage,
+          className: config.responseClass,
+          overwritePolicy: config.overwritePolicy
+        })
+      });
+      const rData = await rRes.json();
+      if (rData.success) {
+        log('success', rData.message);
+      } else {
+        log('error', rData.message || '生成响应类失败');
+      }
+    } catch (e) {
+      log('error', '生成响应类请求失败: ' + e.message);
+    }
+  }
+
+  // 逐表生成
+  let completed = 0;
+  const total = tables.length;
+
+  for (const tableName of tables) {
+    log('info', `\n--- 正在生成 ${tableName} ---`);
+
+    try {
+      const res = await fetch(API + '/api/generate-table', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config, tableName })
+      });
+
+      if (!res.ok) {
+        log('error', `请求失败: ${res.status}`);
+        continue;
+      }
+
+      // SSE 流式读取
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6).trim();
+            try {
+              const result = JSON.parse(jsonStr);
+              if (result.success) {
+                log('success', result.message);
+              } else {
+                log('error', result.message);
+              }
+            } catch (e) {
+              // 非 JSON 行
+            }
+          }
+        }
+      }
+
+    } catch (e) {
+      log('error', `生成 ${tableName} 失败: ${e.message}`);
+    }
+
+    completed++;
+    const pct = Math.round((completed / total) * 100);
+    document.getElementById('progressInner').style.width = pct + '%';
+  }
+
+  log('info', '\n✅ 全部生成完成！');
+  btn.disabled = false; btn.textContent = '🚀 生成代码';
+}
+
+// 日志
+function log(type, msg) {
+  const el = document.getElementById('logArea');
+  const line = document.createElement('div');
+  line.className = type;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('logArea').innerHTML = '';
+  document.getElementById('progressInner').style.width = '0%';
+}
+
+// ========== pom.xml 依赖检查 ==========
+
+// 检查 pom.xml 文件
+async function checkPomFile() {
+  const path = document.getElementById('pomPath').value.trim();
+  if (!path) { pomLog('error', '请填写 pom.xml 文件路径'); return; }
+
+  const btn = document.getElementById('pomBtn');
+  btn.disabled = true; btn.textContent = '⏳ 检查中…';
+  clearPomResult();
+  pomLog('info', `📂 检查文件: ${path}`);
+
+  try {
+    const res = await fetch('/api/pom-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pomPath: path })
+    });
+    const data = await res.json();
+    renderPomResult(data);
+  } catch (e) {
+    pomLog('error', '请求失败: ' + e.message);
+  }
+
+  btn.disabled = false; btn.textContent = '🔍 检查';
+}
+
+// 检查粘贴的 pom.xml 内容
+async function checkPomContent() {
+  const content = document.getElementById('pomContent').value.trim();
+  if (!content) { pomLog('error', '请粘贴 pom.xml 内容'); return; }
+
+  const btn = document.getElementById('pomContentBtn');
+  btn.disabled = true; btn.textContent = '⏳ 检查中…';
+  clearPomResult();
+  pomLog('info', '📋 检查粘贴内容...');
+
+  try {
+    const res = await fetch('/api/pom-check-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    const data = await res.json();
+    renderPomResult(data);
+  } catch (e) {
+    pomLog('error', '请求失败: ' + e.message);
+  }
+
+  btn.disabled = false; btn.textContent = '📋 检查粘贴内容';
+}
+
+// 渲染检查结果
+function renderPomResult(data) {
+  if (!data.success) {
+    pomLog('error', '❌ ' + (data.message || '检查失败'));
+    return;
+  }
+
+  const r = data.report;
+  if (!r || !r.results) {
+    pomLog('error', '❌ 返回数据异常');
+    return;
+  }
+
+  pomLog('info', `══════════════════════════════`);
+  pomLog('info', `📊 检查汇总:`);
+  pomLog('info', `   共 ${r.summary.total} 个依赖`);
+  pomLog('info', `   ✅ 已安装: ${r.summary.installed}`);
+  if (r.summary.missing > 0) {
+    pomLog('error', `   ❌ 未安装: ${r.summary.missing}`);
+  } else {
+    pomLog('success', `   ✅ 全部已安装!`);
+  }
+  pomLog('info', `   本地仓库: ${r.summary.mavenHome}`);
+  pomLog('info', `══════════════════════════════`);
+
+  if (r.errors && r.errors.length > 0) {
+    r.errors.forEach(e => pomLog('error', '⚠️ ' + e));
+  }
+
+  r.results.forEach(dep => {
+    const icon = dep.installed ? '✅' : '❌';
+    const bom = dep.resolvedByBOM ? ' (BOM)' : '';
+    const scope = dep.scope ? ` [${dep.scope}]` : '';
+    const version = dep.version ? `:${dep.version}` : ':?';
+    const comment = dep.comment ? ' — ' + dep.comment : '';
+    const msg = `${icon} ${dep.groupId}:${dep.artifactId}${version}${scope}${bom}${comment}`;
+    if (dep.installed) {
+      pomLog('success', msg);
+    } else {
+      pomLog('error', msg);
+    }
+  });
+}
+
+function pomLog(type, msg) {
+  const el = document.getElementById('pomResult');
+  const line = document.createElement('div');
+  line.className = type;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearPomResult() {
+  document.getElementById('pomResult').innerHTML = '';
+}
+
+// ========== 依赖匹配检查 ==========
+
+async function checkDepsMatch() {
+  const path = document.getElementById('pomDepsPath').value.trim();
+  const content = document.getElementById('pomContent').value.trim();
+
+  if (!path && !content) {
+    depsLog('error', '请填写 pom.xml 文件路径，或在上方粘贴内容');
+    return;
+  }
+
+  const btn = document.getElementById('pomDepsBtn');
+  btn.disabled = true; btn.textContent = '⏳ 检查中…';
+  document.getElementById('pomDepsResult').innerHTML = '';
+
+  // 读取当前生成配置
+  const config = {
+    dbType: document.getElementById('dbType').value,
+    orm: document.getElementById('orm').value,
+    swagger: document.getElementById('swagger').value,
+    springVersion: document.getElementById('springVersion').value,
+    useLombok: document.getElementById('useLombok').checked,
+  };
+
+  depsLog('info', `📋 生成配置: ${config.orm} / ${config.swagger} / SB${config.springVersion} / Lombok=${config.useLombok}`);
+  depsLog('info', '');
+
+  try {
+    const res = await fetch('/api/pom-check-deps', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pomPath: path || '',
+        content: content || '',
+        ...config
+      })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      depsLog('error', '❌ ' + (data.message || '检查失败'));
+      btn.disabled = false; btn.textContent = '🔍 匹配检查';
+      return;
+    }
+
+    const found = data.found || [];
+    const missing = data.missing || [];
+
+    depsLog('info', `══════════════════════════════`);
+    depsLog('info', `📊 匹配结果:`);
+    depsLog('info', `   ✅ 已匹配: ${found.length}`);
+    depsLog('info', `   ❌ 缺失: ${missing.length}`);
+    depsLog('info', `══════════════════════════════`);
+    depsLog('info', '');
+
+    // 已匹配的
+    if (found.length > 0) {
+      depsLog('info', '✅ 已存在的依赖:');
+      found.forEach(f => {
+        depsLog('success', `   ${f.required.groupId}:${f.required.artifactID}  — ${f.required.reason}`);
+      });
+      depsLog('info', '');
+    }
+
+    // 缺失的
+    if (missing.length > 0) {
+      depsLog('error', `❌ 缺失 ${missing.length} 个依赖 — 请添加到 pom.xml:`);
+      depsLog('info', '');
+      missing.forEach(m => {
+        depsLog('error', `   ⚠ ${m.required.groupId}:${m.required.artifactID}  — ${m.required.reason}`);
+        depsLog('info', `      ${m.suggestedXML}`);
+        depsLog('info', '');
+      });
+
+      // 存储缺失依赖供"补全"按钮使用
+      window._lastMissingDeps = missing;
+      window._lastPomPath = path;
+      window._lastPomContent = content;
+
+      depsLog('info', `────────────────────────────`);
+      depsLog('info', `💡 点击下方按钮自动写入这些依赖`);
+      const btnRow = document.createElement('div');
+      btnRow.style.marginTop = '8px';
+      btnRow.innerHTML = `
+        <button class="btn btn-primary btn-sm" onclick="autoFixPom('preview')">👁 预览补全</button>
+        <button class="btn btn-success btn-sm" onclick="autoFixPom('write')" style="margin-left:8px">💾 写入 pom.xml</button>
+      `;
+      document.getElementById('pomDepsResult').appendChild(btnRow);
+
+    } else {
+      depsLog('success', '🎉 全部所需依赖已在 pom.xml 中声明！');
+    }
+
+  } catch (e) {
+    depsLog('error', '请求失败: ' + e.message);
+  }
+
+  btn.disabled = false; btn.textContent = '🔍 匹配检查';
+}
+
+// ========== 自动补全 pom.xml ==========
+
+async function autoFixPom(mode) {
+  const missing = window._lastMissingDeps;
+  if (!missing || missing.length === 0) {
+    depsLog('error', '没有需要补全的依赖，请先执行匹配检查');
+    return;
+  }
+
+  const path = window._lastPomPath;
+  const content = window._lastPomContent;
+  const previewOnly = (mode === 'preview');
+
+  depsLog('info', `\n${previewOnly ? '👁 预览' : '💾 写入'} — 补全 ${missing.length} 个依赖...`);
+
+  try {
+    const res = await fetch('/api/pom-auto-fix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pomPath: path || '',
+        content: content || '',
+        missingDeps: missing.map(m => m.required),
+        previewOnly: previewOnly
+      })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      depsLog('error', '❌ ' + (data.message || '操作失败'));
+      return;
+    }
+
+    const r = data.result;
+    if (r.insertCount === 0) {
+      depsLog('info', '没有需要补全的依赖（可能已有）');
+      return;
+    }
+
+    if (previewOnly || !r.written) {
+      depsLog('info', `📄 将插入 ${r.insertCount} 个依赖:`);
+      depsLog('info', `────────────────────────────`);
+      depsLog('info', r.preview || '(无预览)');
+      depsLog('info', `────────────────────────────`);
+    }
+
+    if (r.written) {
+      depsLog('success', `✅ 已写入 ${r.filePath}（原文件已备份为 .bak）`);
+      depsLog('info', '请刷新项目后重新编译验证');
+    }
+
+  } catch (e) {
+    depsLog('error', '请求失败: ' + e.message);
+  }
+}
+
+function depsLog(type, msg) {
+  const el = document.getElementById('pomDepsResult');
+  const line = document.createElement('div');
+  line.className = type;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ========== 配置文件检查 ==========
+
+async function checkAppConfig() {
+  const path = document.getElementById('appConfigPath').value.trim();
+  if (!path) {
+    appLog('error', '请填写配置文件路径');
+    return;
+  }
+
+  const btn = document.getElementById('appCfgBtn');
+  btn.disabled = true; btn.textContent = '⏳ 检查中…';
+  document.getElementById('appConfigResult').innerHTML = '';
+
+  appLog('info', `📂 检查: ${path}`);
+
+  try {
+    const res = await fetch('/api/app-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filePath: path,
+        dbType: document.getElementById('dbType').value,
+        orm: document.getElementById('orm').value,
+        swagger: document.getElementById('swagger').value,
+        springVersion: document.getElementById('springVersion').value
+      })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      appLog('error', '❌ ' + (data.message || '检查失败'));
+      btn.disabled = false; btn.textContent = '🔍 检查';
+      return;
+    }
+
+    const r = data.report;
+    appLog('info', `══════════════════════════════`);
+    appLog('info', `📊 检查结果:`);
+    appLog('info', `   格式: ${r.format}`);
+    appLog('info', `   ✅ 已配置: ${r.foundCount}/${r.total}`);
+    appLog('info', `   ❌ 缺失: ${r.total - r.foundCount}`);
+    appLog('info', `══════════════════════════════`);
+
+    if (r.found && r.found.length > 0) {
+      appLog('info', '✅ 已存在的配置:');
+      r.found.forEach(f => {
+        appLog('success', `   ${f.config.key} = ${f.foundVal || '(已配置)'}`);
+      });
+    }
+
+    if (r.missing && r.missing.length > 0) {
+      appLog('error', `❌ 缺失 ${r.missing.length} 项:`);
+      r.missing.forEach(m => {
+        appLog('error', `   ${m.config.key}  — ${m.config.reason}`);
+      });
+      appLog('info', '');
+      appLog('info', '💡 点击按钮自动补全');
+      const btnRow = document.createElement('div');
+      btnRow.style.marginTop = '8px';
+      btnRow.innerHTML = `
+        <button class="btn btn-primary btn-sm" onclick="autoFixAppConfig('preview')">👁 预览补全</button>
+        <button class="btn btn-success btn-sm" onclick="autoFixAppConfig('write')" style="margin-left:8px">💾 写入</button>
+      `;
+      document.getElementById('appConfigResult').appendChild(btnRow);
+    } else {
+      appLog('success', '🎉 全部所需配置项已存在！');
+    }
+
+  } catch (e) {
+    appLog('error', '请求失败: ' + e.message);
+  }
+
+  btn.disabled = false; btn.textContent = '🔍 检查';
+}
+
+async function autoFixAppConfig(mode) {
+  const path = document.getElementById('appConfigPath').value.trim();
+  if (!path) { appLog('error', '请填写配置文件路径'); return; }
+
+  const previewOnly = (mode === 'preview');
+  appLog('info', `\n${previewOnly ? '👁 预览' : '💾 写入'} 补全...`);
+
+  try {
+    const res = await fetch('/api/app-auto-fix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filePath: path,
+        dbType: document.getElementById('dbType').value,
+        orm: document.getElementById('orm').value,
+        swagger: document.getElementById('swagger').value,
+        springVersion: document.getElementById('springVersion').value,
+        previewOnly: previewOnly
+      })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      appLog('error', '❌ ' + (data.message || '操作失败'));
+      return;
+    }
+    const r = data.result;
+    if (!r.snippet) {
+      appLog('info', '没有需要补全的配置');
+      return;
+    }
+    if (previewOnly || !r.written) {
+      appLog('info', `📄 将追加以下内容:`);
+      appLog('info', `────────────────────────────`);
+      appLog('info', r.snippet);
+      appLog('info', `────────────────────────────`);
+    }
+    if (r.written) {
+      appLog('success', `✅ 已写入 ${r.filePath}（原文件已备份 .bak）`);
+    }
+  } catch (e) {
+    appLog('error', '请求失败: ' + e.message);
+  }
+}
+
+function appLog(type, msg) {
+  const el = document.getElementById('appConfigResult');
+  const line = document.createElement('div');
+  line.className = type;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+// 端口自动切换
+document.getElementById('dbType').addEventListener('change', function() {
+  const portInput = document.getElementById('dbPort');
+  if (this.value === 'mysql') portInput.value = '3306';
+  else portInput.value = '5432';
+});
+</script>
+</body>
+</html>
