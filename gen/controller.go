@@ -43,8 +43,9 @@ public class {{.EntityName}}Controller {
     public {{.ResponseClass}}<Page<{{.EntityName}}>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Page<{{.EntityName}}> p = (Page<{{.EntityName}}>) {{.EntityVar}}Service.page(page, size);
-        return {{.ResponseClass}}.ok(p);
+{{if eq .Orm "mybatis-plus"}}        Page<{{.EntityName}}> p = (Page<{{.EntityName}}>) {{.EntityVar}}Service.page(new Page<>(page, size));
+{{else}}        Page<{{.EntityName}}> p = (Page<{{.EntityName}}>) {{.EntityVar}}Service.page(page, size);
+{{end}}        return {{.ResponseClass}}.ok(p);
     }
 
 {{if eq .Swagger "springdoc"}}    @Operation(summary = "全部列表")

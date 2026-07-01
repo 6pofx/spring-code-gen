@@ -12,9 +12,9 @@ import (
 // EntityTemplateMybatisPlus MyBatis-Plus 实体模板
 const EntityTemplateMybatisPlus = `package {{.EntityPackageFull}};
 
-{{if .Imports}}import java.io.Serializable;
+import java.io.Serializable;
+import com.baomidou.mybatisplus.annotation.*;
 {{range .Imports}}import {{.}};
-{{end}}{{else}}import java.io.Serializable;
 {{end}}
 {{if .Swagger}}
 {{SwaggerModelImport .Swagger}}
@@ -116,16 +116,16 @@ public class {{.EntityName}} implements Serializable {
 
 // FuncMap 模板函数映射
 var FuncMap = template.FuncMap{
-	"ColumnComment":        columnComment,
-	"ColumnAnnotation":     columnAnnotation,
-	"ColumnAnnotationJPA":  columnAnnotationJPA,
-	"GetterSetter":         getterSetter,
-	"SwaggerModelImport":   swaggerModelImport,
-	"SwaggerModelAnnotation": swaggerModelAnnotation,
-	"SwaggerFieldAnnotation": swaggerFieldAnnotation,
+	"ColumnComment":             columnComment,
+	"ColumnAnnotation":          columnAnnotation,
+	"ColumnAnnotationJPA":       columnAnnotationJPA,
+	"GetterSetter":              getterSetter,
+	"SwaggerModelImport":        swaggerModelImport,
+	"SwaggerModelAnnotation":    swaggerModelAnnotation,
+	"SwaggerFieldAnnotation":    swaggerFieldAnnotation,
 	"SwaggerFieldAnnotationJPA": swaggerFieldAnnotationJPA,
-	"UpperFirst":           UpperFirst,
-	"LowerFirst":           LowerFirst,
+	"UpperFirst":                UpperFirst,
+	"LowerFirst":                LowerFirst,
 }
 
 func getEntityTemplate(orm string) string {
@@ -163,7 +163,7 @@ func columnAnnotation(col ColumnInfo, isPK bool, isAutoInc bool, swagger, namesp
 	}
 
 	// Swagger 字段注解
-	if (col.ColComment != "") {
+	if col.ColComment != "" {
 		if swagger == "springdoc" {
 			annos = append(annos, fmt.Sprintf("    @Schema(description = \"%s\")", col.ColComment))
 		} else {
