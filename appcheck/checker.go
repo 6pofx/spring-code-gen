@@ -45,7 +45,7 @@ type CheckReport struct {
 }
 
 // requiredConfigs 根据生成配置返回必需的配置项列表
-func requiredConfigs(dbType, orm, swagger, springVersion string) []RequiredConfig {
+func requiredConfigs(dbType, orm, swagger, springVersion string, enableRedis bool) []RequiredConfig {
 	var configs []RequiredConfig
 
 	// 通用
@@ -183,11 +183,39 @@ func requiredConfigs(dbType, orm, swagger, springVersion string) []RequiredConfi
 		})
 	}
 
+	// === Redis 缓存 ===
+	if enableRedis {
+		configs = append(configs, RequiredConfig{
+			Key:       "spring.data.redis.host",
+			YamlPath:  "spring.data.redis.host",
+			PropKey:   "spring.data.redis.host",
+			YamlValue: "127.0.0.1",
+			PropValue: "127.0.0.1",
+			Reason:   "Redis 主机地址",
+		})
+		configs = append(configs, RequiredConfig{
+			Key:       "spring.data.redis.port",
+			YamlPath:  "spring.data.redis.port",
+			PropKey:   "spring.data.redis.port",
+			YamlValue: "6379",
+			PropValue: "6379",
+			Reason:   "Redis 端口",
+		})
+		configs = append(configs, RequiredConfig{
+			Key:       "spring.data.redis.password",
+			YamlPath:  "spring.data.redis.password",
+			PropKey:   "spring.data.redis.password",
+			YamlValue: "",
+			PropValue: "",
+			Reason:   "Redis 密码（可选）",
+		})
+	}
+
 	return configs
 }
 
 // CheckFile 检查配置文件
-func CheckFile(filePath, dbType, orm, swagger, springVersion string) (*CheckReport, error) {
+func CheckFile(filePath, dbType, orm, swagger, springVersion string, enableRedis bool) (*CheckReport, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("读取文件失败: %w", err)
@@ -195,7 +223,7 @@ func CheckFile(filePath, dbType, orm, swagger, springVersion string) (*CheckRepo
 
 	content := string(data)
 	format := detectFormat(filePath)
-	required := requiredConfigs(dbType, orm, swagger, springVersion)
+	required := requiredConfigs(dbType, orm, swagger, springVersion, enableRedis)
 
 	report := &CheckReport{
 		FilePath: filePath,
@@ -333,17 +361,17 @@ type AutoFixConfig struct {
 }
 
 // AutoFixPreview 预览补全
-func AutoFixPreview(filePath, dbType, orm, swagger, springVersion string) (*AutoFixConfig, error) {
-	return autoFix(filePath, dbType, orm, swagger, springVersion, false)
+func AutoFixPreview(filePath, dbType, orm, swagger, springVersion string, enableRedis bool) (*AutoFixConfig, error) {
+	return autoFix(filePath, dbType, orm, swagger, springVersion, false, enableRedis)
 }
 
 // AutoFixWrite 写入补全
-func AutoFixWrite(filePath, dbType, orm, swagger, springVersion string) (*AutoFixConfig, error) {
-	return autoFix(filePath, dbType, orm, swagger, springVersion, true)
+func AutoFixWrite(filePath, dbType, orm, swagger, springVersion string, enableRedis bool) (*AutoFixConfig, error) {
+	return autoFix(filePath, dbType, orm, swagger, springVersion, true, enableRedis)
 }
 
-func autoFix(filePath, dbType, orm, swagger, springVersion string, write bool) (*AutoFixConfig, error) {
-	report, err := CheckFile(filePath, dbType, orm, swagger, springVersion)
+func autoFix(filePath, dbType, orm, swagger, springVersion string, write bool, enableRedis bool) (*AutoFixConfig, error) {
+	report, err := CheckFile(filePath, dbType, orm, swagger, springVersion, enableRedis)
 	if err != nil {
 		return nil, err
 	}

@@ -240,6 +240,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
     </div>
   </div>
 
+  <!-- Redis 缓存配置 -->
+  <div class="card">
+    <h2>🗄️ Redis 缓存（可选）</h2>
+    <div class="config-grid">
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding-top:8px">
+          <input type="checkbox" id="enableRedis" onchange="toggleRedis()"> 启用 Redis 缓存
+        </label>
+      </div>
+      <div class="form-group">
+        <label>Redis 客户端</label>
+        <select id="redisClient">
+          <option value="lettuce">Lettuce（默认）</option>
+          <option value="jedis">Jedis</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>JSON 序列化</label>
+        <select id="jsonLib">
+          <option value="jackson">Jackson（默认）</option>
+          <option value="fastjson2">Fastjson2</option>
+          <option value="gson">Gson</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
   <!-- pom.xml 依赖检查 -->
   <div class="card">
     <h2>📦 pom.xml 依赖检查</h2>
@@ -386,6 +414,9 @@ function getFullConfig() {
     genService: document.getElementById('genService').checked,
     genController: document.getElementById('genController').checked,
     genResponseClass: document.getElementById('genResponseClass').checked,
+    enableRedis: document.getElementById('enableRedis').checked,
+    redisClient: document.getElementById('redisClient').value,
+    jsonLib: document.getElementById('jsonLib').value,
     outputDir: document.getElementById('outputDir').value,
     overwritePolicy: document.getElementById('overwritePolicy').value
   };
@@ -700,9 +731,12 @@ async function checkDepsMatch() {
     swagger: document.getElementById('swagger').value,
     springVersion: document.getElementById('springVersion').value,
     useLombok: document.getElementById('useLombok').checked,
+    enableRedis: document.getElementById('enableRedis').checked,
+    redisClient: document.getElementById('redisClient').value,
+    jsonLib: document.getElementById('jsonLib').value,
   };
 
-  depsLog('info', `📋 生成配置: ${config.orm} / ${config.swagger} / SB${config.springVersion} / Lombok=${config.useLombok}`);
+  depsLog('info', `📋 生成配置: ${config.orm} / ${config.swagger} / SB${config.springVersion} / Lombok=${config.useLombok}${config.enableRedis ? ' / Redis=' + config.redisClient : ''}`);
   depsLog('info', '');
 
   try {
@@ -867,7 +901,8 @@ async function checkAppConfig() {
         dbType: document.getElementById('dbType').value,
         orm: document.getElementById('orm').value,
         swagger: document.getElementById('swagger').value,
-        springVersion: document.getElementById('springVersion').value
+        springVersion: document.getElementById('springVersion').value,
+        enableRedis: document.getElementById('enableRedis').checked
       })
     });
     const data = await res.json();
@@ -935,7 +970,8 @@ async function autoFixAppConfig(mode) {
         orm: document.getElementById('orm').value,
         swagger: document.getElementById('swagger').value,
         springVersion: document.getElementById('springVersion').value,
-        previewOnly: previewOnly
+        previewOnly: previewOnly,
+        enableRedis: document.getElementById('enableRedis').checked
       })
     });
     const data = await res.json();
@@ -969,6 +1005,13 @@ function appLog(type, msg) {
   line.textContent = msg;
   el.appendChild(line);
   el.scrollTop = el.scrollHeight;
+}
+
+// Redis 缓存开关 — 联动客户端/JSON 库选择框
+function toggleRedis() {
+  const enabled = document.getElementById('enableRedis').checked;
+  document.getElementById('redisClient').disabled = !enabled;
+  document.getElementById('jsonLib').disabled = !enabled;
 }
 
 // 端口自动切换

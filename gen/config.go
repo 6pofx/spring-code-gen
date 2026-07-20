@@ -46,6 +46,11 @@ type Config struct {
 
 	// 覆盖策略: overwrite / skip / ask
 	OverwritePolicy string `json:"overwritePolicy"`
+
+	// Redis 缓存
+	EnableRedis bool   `json:"enableRedis"`
+	RedisClient string `json:"redisClient"` // lettuce / jedis
+	JsonLib     string `json:"jsonLib"`     // jackson / fastjson2 / gson
 }
 
 // TemplateData 传递给模板的数据
@@ -66,6 +71,7 @@ type TemplateData struct {
 	ServicePackageFull   string
 	ServiceImplPkgFull   string
 	ControllerPkgFull    string
+	ConfigPackageFull    string // com.example.config
 
 	// 列
 	Columns []ColumnInfo

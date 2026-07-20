@@ -111,6 +111,7 @@ func BuildTemplateData(cfg *Config, tableName, tableComment string, columns []Co
 		ServicePackageFull: basePkg + "." + servicePkg,
 		ServiceImplPkgFull: basePkg + "." + serviceImplPkg,
 		ControllerPkgFull:  basePkg + "." + controllerPkg,
+		ConfigPackageFull:   basePkg + ".config",
 
 		Namespace:        namespace,
 		InjectAnnotation: injectAnnotation,
@@ -224,6 +225,21 @@ func GenerateAll(td *TemplateData, cfg *Config, tableName string, results chan<-
 				results <- Result{Type: "service-impl", Table: tableName, Success: false, Message: err.Error()}
 			} else {
 				results <- Result{Type: "service-impl", Table: tableName, Success: true, Message: formatResultMsg(msg, td.EntityName+"ServiceImpl.java")}
+			}
+		}
+	}
+
+	// Redis 配置类（仅第一个表会执行，后续表跳过）
+	if cfg.EnableRedis && td.ConfigPackageFull != "" {
+		content, err := GenerateRedisConfig(td)
+		if err != nil {
+			results <- Result{Type: "redis-config", Table: tableName, Success: false, Message: err.Error()}
+		} else {
+			msg, err := WriteRedisConfigFile(td, content, cfg.OverwritePolicy)
+			if err != nil {
+				results <- Result{Type: "redis-config", Table: tableName, Success: false, Message: err.Error()}
+			} else {
+				results <- Result{Type: "redis-config", Table: tableName, Success: true, Message: formatResultMsg(msg, "RedisConfig.java")}
 			}
 		}
 	}

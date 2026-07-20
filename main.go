@@ -366,6 +366,9 @@ type pomCheckDepsReq struct {
 	Swagger       string `json:"swagger"`
 	SpringVersion string `json:"springVersion"`
 	UseLombok     bool   `json:"useLombok"`
+	EnableRedis   bool   `json:"enableRedis"`
+	RedisClient   string `json:"redisClient"`
+	JsonLib       string `json:"jsonLib"`
 }
 
 // 处理依赖匹配检查
@@ -403,7 +406,7 @@ func handlePomCheckDeps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	found, missing := pomcheck.CheckRequiredDeps(req.DBType, req.Orm, req.Swagger, req.SpringVersion, req.UseLombok, existingDeps)
+	found, missing := pomcheck.CheckRequiredDeps(req.DBType, req.Orm, req.Swagger, req.SpringVersion, req.UseLombok, existingDeps, req.EnableRedis, req.RedisClient, req.JsonLib)
 
 	jsonResp(w, map[string]interface{}{
 		"success": true,
@@ -486,6 +489,7 @@ type appCheckReq struct {
 	Orm            string `json:"orm"`
 	Swagger        string `json:"swagger"`
 	SpringVersion  string `json:"springVersion"`
+	EnableRedis    bool   `json:"enableRedis"`
 }
 
 // 处理配置文件检查
@@ -506,7 +510,7 @@ func handleAppCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	report, err := appcheck.CheckFile(req.FilePath, req.DBType, req.Orm, req.Swagger, req.SpringVersion)
+	report, err := appcheck.CheckFile(req.FilePath, req.DBType, req.Orm, req.Swagger, req.SpringVersion, req.EnableRedis)
 	if err != nil {
 		jsonResp(w, map[string]interface{}{"success": false, "message": err.Error()})
 		return
@@ -523,6 +527,7 @@ type appAutoFixReq struct {
 	Swagger        string `json:"swagger"`
 	SpringVersion  string `json:"springVersion"`
 	PreviewOnly    bool   `json:"previewOnly"`
+	EnableRedis    bool   `json:"enableRedis"`
 }
 
 // 处理配置文件补全
@@ -547,9 +552,9 @@ func handleAppAutoFix(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if req.PreviewOnly {
-		result, err = appcheck.AutoFixPreview(req.FilePath, req.DBType, req.Orm, req.Swagger, req.SpringVersion)
+		result, err = appcheck.AutoFixPreview(req.FilePath, req.DBType, req.Orm, req.Swagger, req.SpringVersion, req.EnableRedis)
 	} else {
-		result, err = appcheck.AutoFixWrite(req.FilePath, req.DBType, req.Orm, req.Swagger, req.SpringVersion)
+		result, err = appcheck.AutoFixWrite(req.FilePath, req.DBType, req.Orm, req.Swagger, req.SpringVersion, req.EnableRedis)
 	}
 
 	if err != nil {

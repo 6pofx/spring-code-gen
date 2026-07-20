@@ -25,7 +25,7 @@ type DepMatchResult struct {
 }
 
 // depsByConfig 根据生成配置推断所需依赖
-func depsByConfig(dbType, orm, swagger, springVersion string, useLombok bool) []RequiredDep {
+func depsByConfig(dbType, orm, swagger, springVersion string, useLombok bool, enableRedis bool, redisClient, jsonLib string) []RequiredDep {
 	var deps []RequiredDep
 
 	isSB3 := springVersion == "3.x"
@@ -161,9 +161,46 @@ func depsByConfig(dbType, orm, swagger, springVersion string, useLombok bool) []
 		})
 	}
 
-	// === 工具 ===
-	// spring-boot-starter-test — 可选但不强制
-	// spring-boot-devtools — 可选
+	// === Redis 缓存 ===
+	if enableRedis {
+		deps = append(deps, RequiredDep{
+			GroupID:       "org.springframework.boot",
+			ArtifactID:    "spring-boot-starter-data-redis",
+			Reason:        "Redis 缓存支持",
+			SpringBootBOM: true,
+		})
+		if redisClient == "jedis" {
+			deps = append(deps, RequiredDep{
+				GroupID:       "redis.clients",
+				ArtifactID:    "jedis",
+				Reason:        "Jedis Redis 客户端",
+				SpringBootBOM: true,
+			})
+		}
+		// JSON 序列化库
+		switch jsonLib {
+		case "fastjson2":
+			deps = append(deps, RequiredDep{
+				GroupID:    "com.alibaba.fastjson2",
+				ArtifactID: "fastjson2",
+				Version:    "2.0.53",
+				Reason:     "Fastjson2 JSON 序列化",
+			})
+			deps = append(deps, RequiredDep{
+				GroupID:    "com.alibaba.fastjson2",
+				ArtifactID: "fastjson2-extension-spring6",
+				Version:    "2.0.53",
+				Reason:     "Fastjson2 Spring 6 扩展",
+			})
+		case "gson":
+			deps = append(deps, RequiredDep{
+				GroupID:       "com.google.code.gson",
+				ArtifactID:    "gson",
+				Reason:        "Gson JSON 序列化",
+				SpringBootBOM: true,
+			})
+		}
+	}
 
 	return deps
 }
@@ -188,8 +225,8 @@ func (r RequiredDep) toXML(indent string) string {
 
 // CheckRequiredDeps 根据生成配置检查 pom.xml 中是否缺少必要依赖
 // 返回：已存在的依赖列表、缺失的依赖列表
-func CheckRequiredDeps(dbType, orm, swagger, springVersion string, useLombok bool, existingDeps []Dependency) (found []DepMatchResult, missing []DepMatchResult) {
-	required := depsByConfig(dbType, orm, swagger, springVersion, useLombok)
+func CheckRequiredDeps(dbType, orm, swagger, springVersion string, useLombok bool, existingDeps []Dependency, enableRedis bool, redisClient, jsonLib string) (found []DepMatchResult, missing []DepMatchResult) {
+	required := depsByConfig(dbType, orm, swagger, springVersion, useLombok, enableRedis, redisClient, jsonLib)
 
 	// 构建已存在的 key 集合
 	existing := make(map[string]bool)
