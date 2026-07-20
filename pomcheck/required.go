@@ -169,12 +169,20 @@ func depsByConfig(dbType, orm, swagger, springVersion string, useLombok bool, en
 			Reason:        "Redis 缓存支持",
 			SpringBootBOM: true,
 		})
-		if redisClient == "jedis" {
+		switch redisClient {
+		case "jedis":
 			deps = append(deps, RequiredDep{
 				GroupID:       "redis.clients",
 				ArtifactID:    "jedis",
 				Reason:        "Jedis Redis 客户端",
 				SpringBootBOM: true,
+			})
+		case "redisson":
+			deps = append(deps, RequiredDep{
+				GroupID:    "org.redisson",
+				ArtifactID: "redisson-spring-boot-starter",
+				Version:    "3.40.0",
+				Reason:     "Redisson 分布式缓存客户端",
 			})
 		}
 		// JSON 序列化库

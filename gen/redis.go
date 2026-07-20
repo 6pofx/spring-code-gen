@@ -43,7 +43,10 @@ public class RedisConfig {
         template.setHashKeySerializer(stringSerializer);
 
         // value 序列化
-{{if eq .JsonLib "jackson"}}        Jackson2JsonRedisSerializer<Object> jacksonSerializer = jacksonSerializer();
+{{if eq .JsonLib "jackson"}}        ObjectMapper mapper = new ObjectMapper();
+        mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+        mapper.activateDefaultTyping(LaissezFaireSubTypeValidator.instance, ObjectMapper.DefaultTyping.NON_FINAL);
+        Jackson2JsonRedisSerializer<Object> jacksonSerializer = new Jackson2JsonRedisSerializer<>(mapper, Object.class);
 {{else if eq .JsonLib "fastjson2"}}        GenericFastJsonRedisSerializer fastJsonSerializer = new GenericFastJsonRedisSerializer();
 {{else}}        Gson gson = new Gson();
         GenericToStringSerializer<Object> gsonSerializer = new GenericToStringSerializer<>(Object.class);
@@ -55,19 +58,12 @@ public class RedisConfig {
 {{else}}        template.setValueSerializer(gsonSerializer);
         template.setHashValueSerializer(gsonSerializer);
 {{end}}
+{{if eq .RedisClient "redisson"}}
+        // 使用 Redisson 客户端（由 RedissonAutoConfiguration 自动配置）
+{{end}}
         template.afterPropertiesSet();
         return template;
     }
-{{if eq .JsonLib "jackson"}}
-    private Jackson2JsonRedisSerializer<Object> jacksonSerializer() {
-        Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(Object.class);
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
-        mapper.activateDefaultTyping(LaissezFaireSubTypeValidator.instance, ObjectMapper.DefaultTyping.NON_FINAL);
-        serializer.setObjectMapper(mapper);
-        return serializer;
-    }
-{{end}}
 }
 `
 
